@@ -1,94 +1,87 @@
 package sprites
 
 import (
-	"image"
 	"math"
 
 	"github.com/hajimehoshi/ebiten/v2"
 )
 
 type Hero struct {
-	X, Y, imageWidth int
+	Sprite *Sprite
+}
 
-	image *ebiten.Image
+func NewHero(image *ebiten.Image) *Hero {
+	h := Hero{
+		Sprite: NewSprite(image.Bounds().Dx() / 3, image),
+	}
+	return &h
 }
 
 func (h *Hero) Update(gamepadIds *map[ebiten.GamepadID]bool, height, width int) {
 	for id := range *gamepadIds {
+		prevX := h.Sprite.X
+		prevY := h.Sprite.Y
 		x := ebiten.StandardGamepadAxisValue(id, ebiten.StandardGamepadAxisLeftStickHorizontal)
-		x = math.Round(x * 10) / 10
+		x = math.Round(x*10) / 10
 		y := ebiten.StandardGamepadAxisValue(id, ebiten.StandardGamepadAxisLeftStickVertical)
-		y = math.Round(y * 10) / 10
-		h.X = h.X + int(x * 10)
-		if h.X < (h.imageWidth / 2) {
-			h.X = h.imageWidth / 2
-		} else if h.X > (width - (h.imageWidth / 2)) {
-			h.X = width - (h.imageWidth / 2)
+		y = math.Round(y*10) / 10
+		h.Sprite.X = h.Sprite.X + int(x*10)
+		if h.Sprite.X < (h.Sprite.imageWidth / 2) {
+			h.Sprite.X = h.Sprite.imageWidth / 2
+		} else if h.Sprite.X > (width - (h.Sprite.imageWidth / 2)) {
+			h.Sprite.X = width - (h.Sprite.imageWidth / 2)
 		}
-		h.Y = h.Y + int(y * 10)
-		if h.Y < (h.image.Bounds().Dy() / 2) {
-			h.Y = h.image.Bounds().Dy() / 2
-		} else if h.Y > (height - (h.image.Bounds().Dy() / 2)) {
-			h.Y = height - (h.image.Bounds().Dy() / 2)
+		h.Sprite.Y = h.Sprite.Y + int(y*10)
+		if h.Sprite.Y < (h.Sprite.image.Bounds().Dy() / 2) {
+			h.Sprite.Y = h.Sprite.image.Bounds().Dy() / 2
+		} else if h.Sprite.Y > (height - (h.Sprite.image.Bounds().Dy() / 2)) {
+			h.Sprite.Y = height - (h.Sprite.image.Bounds().Dy() / 2)
+		}
+
+		rightX := ebiten.StandardGamepadAxisValue(id, ebiten.StandardGamepadAxisRightStickHorizontal)
+		rightX = math.Round(rightX*10) / 10
+		rightY := ebiten.StandardGamepadAxisValue(id, ebiten.StandardGamepadAxisRightStickVertical)
+		rightY = math.Round(rightY*10) / 10
+		if rightX == 0 && rightY == 0 {
+			h.Sprite.Radians = 0
+		} else {
+			rightX = math.Round(rightX*10) / 10
+			rightX = float64(h.Sprite.X) + (rightX * 10)
+			if int(rightX) < (h.Sprite.imageWidth / 2) {
+				rightX = float64(h.Sprite.imageWidth) / 2
+			} else if h.Sprite.X > (width - (h.Sprite.imageWidth / 2)) {
+				rightX = float64(width - (h.Sprite.imageWidth / 2))
+			}
+	
+			rightY = math.Round(rightY*10) / 10
+			rightY = float64(h.Sprite.Y + int(rightY*10))
+			if int(rightY) < (h.Sprite.image.Bounds().Dy() / 2) {
+				rightY = float64(h.Sprite.image.Bounds().Dy() / 2)
+			} else if h.Sprite.Y > (height - (h.Sprite.image.Bounds().Dy() / 2)) {
+				rightY = float64(height - (h.Sprite.image.Bounds().Dy() / 2))
+			}
+	
+			deltaX := int(rightX) - prevX
+			deltaY := int(rightY) - prevY
+			h.Sprite.Radians = math.Atan2(float64(deltaY), float64(deltaX)) - (math.Pi / 180)	
 		}
 	}
 }
 
 func (h *Hero) Draw(screen *ebiten.Image) {
-	op := &ebiten.DrawImageOptions{}
-	op.GeoM.Translate(float64(h.X - (h.imageWidth / 2)), float64(h.Y - (h.image.Bounds().Dy() / 2)))
-	subImageRect := image.Rect(0, 0, h.imageWidth, h.image.Bounds().Dy())
-	subImage := h.image.SubImage(subImageRect).(*ebiten.Image)
-	screen.DrawImage(subImage, op)
-}
-
-func (h *Hero) Bounds() *image.Rectangle {
-	return &image.Rectangle{
-		Min: image.Point{
-			X: h.X,
-			Y: h.Y,
-		},
-		Max: image.Point{
-			X: h.X + imageWidth,
-			Y: h.Y + h.image.Bounds().Dy(),
-		},
-	}
-}
-
-func (h *Hero) Center(width, height int) {
-	h.X = (width / 2) - (h.imageWidth / 2)
-	h.Y = (height / 2) - (h.image.Bounds().Dy() / 2)
+	h.Sprite.Draw(screen, 0)
 }
 
 func (h *Hero) Winner(screen *ebiten.Image, width, height int) {
-	scale := 10
-	op := &ebiten.DrawImageOptions{}
-	op.GeoM.Scale(float64(scale), float64(scale))
-	x := float64((width / 2) - (h.imageWidth * (scale / 2)))
-	y := float64((height / 2) - (h.image.Bounds().Dy() * (scale / 2)))
-	op.GeoM.Translate(x, y)
-	subImageRect := image.Rect(h.imageWidth * 2, 0, h.image.Bounds().Dx(), h.image.Bounds().Dy())
-	subImage := h.image.SubImage(subImageRect).(*ebiten.Image)
-	screen.DrawImage(subImage, op)
+	h.Sprite.Scale(10)
+	h.Sprite.X = width / 2
+	h.Sprite.Y = height / 2
+	h.Sprite.Draw(screen, 1)
 }
 
 func (h *Hero) GameOver(screen *ebiten.Image, width, height int) {
-	scale := 10
-	op := &ebiten.DrawImageOptions{}
-	op.GeoM.Scale(float64(scale), float64(scale))
-	x := float64((width / 2) - (h.imageWidth * (scale / 2)))
-	y := float64((height / 2) - (h.image.Bounds().Dy() * (scale / 2)))
-	op.GeoM.Translate(x, y)
-	subImageRect := image.Rect(h.imageWidth, 0, h.imageWidth * 2, h.image.Bounds().Dy())
-	subImage := h.image.SubImage(subImageRect).(*ebiten.Image)
-	screen.DrawImage(subImage, op)
-}
-
-func NewHero(width, height int, image *ebiten.Image) *Hero {
-	h := Hero{
-		imageWidth: image.Bounds().Dx() / 3,
-		image: image,
-	}
-	h.Center(width, height)
-	return &h
+	h.Sprite.Scale(10)
+	h.Sprite.X = width / 2
+	h.Sprite.Y = height / 2
+	h.Sprite.Draw(screen, 2)
 }

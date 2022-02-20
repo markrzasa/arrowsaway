@@ -7,7 +7,7 @@ import (
 )
 
 const (
-	numStages int = 1
+	numStages int = 2
 )
 
 type Level struct {
@@ -85,7 +85,7 @@ func (l *Level) PopulateEnemies(width, height int, enemies map[string]*sprites.E
 			x := (i * (width / enemiesPerSide))
 			y := height - l.enemyImage.Bounds().Dy()
 			enemies[uuid.New().String()] = sprites.NewEnemy(x, y, l.getHitpoints(i), false, l.enemyImage)
-		}	
+		}
  	}
 }
 

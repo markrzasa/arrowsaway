@@ -4,16 +4,17 @@ go 1.17
 
 require (
 	github.com/google/uuid v1.3.0
-	github.com/hajimehoshi/ebiten/v2 v2.2.3
+	github.com/hajimehoshi/ebiten/v2 v2.2.5
 	golang.org/x/image v0.0.0-20211028202545-6944b10bf410
 )
 
 require (
 	github.com/go-gl/glfw/v3.3/glfw v0.0.0-20211213063430-748e38ca8aec // indirect
-	github.com/jezek/xgb v0.0.0-20210312150743-0e0f116e1240 // indirect
-	golang.org/x/exp v0.0.0-20220104160115-025e73f80486 // indirect
-	golang.org/x/mobile v0.0.0-20220104184238-4a8be17bd2e3 // indirect
+	github.com/jezek/xgb v1.0.0 // indirect
+	golang.org/x/exp v0.0.0-20190731235908-ec7cb31e5a56 // indirect
+	golang.org/x/exp/shiny v0.0.0-20220218215828-6cf2b201936e // indirect
+	golang.org/x/mobile v0.0.0-20220112015953-858099ff7816 // indirect
 	golang.org/x/sync v0.0.0-20210220032951-036812b2e83c // indirect
-	golang.org/x/sys v0.0.0-20211216021012-1d35b9e2eb4e // indirect
+	golang.org/x/sys v0.0.0-20220209214540-3681064d5158 // indirect
 	golang.org/x/text v0.3.7 // indirect
 )

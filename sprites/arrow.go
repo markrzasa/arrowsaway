@@ -3,7 +3,9 @@ package sprites
 import (
 	"math"
 
+	"github.com/google/uuid"
 	"github.com/hajimehoshi/ebiten/v2"
+	"github.com/markrzasa/arrowsaway/images"
 )
 
 const (
@@ -11,18 +13,19 @@ const (
 )
 
 type Arrow struct {
-	m, b, radians    float64
-	X, Y, EndX, EndY int
-	xInc, yInc       int
-	image            *ebiten.Image
+	Id         string
+	m, b       float64
+	EndX, EndY int
+	xInc, yInc  int
+	Sprite      Sprite
 }
 
 func (a *Arrow) IsOffScreen(width, height int) bool {
-	if a.X < 0 || a.X > width {
+	if a.Sprite.X < 0 || a.Sprite.X > width {
 		return true
 	}
 
-	if a.Y < 0 || a.Y > height {
+	if a.Sprite.Y < 0 || a.Sprite.Y > height {
 		return true
 	}
 
@@ -31,25 +34,21 @@ func (a *Arrow) IsOffScreen(width, height int) bool {
 
 func (a *Arrow) Update() {
 	if a.xInc != 0 {
-		a.X = a.X + a.xInc
-		a.Y = int((a.m * float64(a.X)) + a.b)
+		a.Sprite.X = a.Sprite.X + a.xInc
+		a.Sprite.Y = int((a.m * float64(a.Sprite.X)) + a.b)
 	} else {
-		a.Y = a.Y + a.yInc
-		a.X = int((float64(a.Y) - a.b) / a.m)
+		a.Sprite.Y = a.Sprite.Y + a.yInc
+		a.Sprite.X = int((float64(a.Sprite.Y) - a.b) / a.m)
 	}
 }
 
 func (a *Arrow) Draw(screen *ebiten.Image) {
-	op := &ebiten.DrawImageOptions{}
-	op.GeoM.Rotate(a.radians)
-	op.GeoM.Translate(float64(a.X), float64(a.Y))
-	screen.DrawImage(a.image, op)
+	a.Sprite.Draw(screen, 0)
 }
 
-func NewArrow(startX, startY, endX, endY int, image *ebiten.Image) *Arrow {
+func NewArrow(startX, startY, endX, endY int) *Arrow {
 	deltaY := endY - startY
 	deltaX := endX - startX
-	radians := math.Atan2(float64(deltaY), float64(deltaX)) - (45 * math.Pi/180)
 	m := float64(deltaY) / float64(deltaX)
 	xIncrement := 0
 	if startX < endX {
@@ -63,16 +62,19 @@ func NewArrow(startX, startY, endX, endY int, image *ebiten.Image) *Arrow {
 	} else {
 		yIncrement = -1 * ((startY - endY) / animations)
 	}
-	return &Arrow{
+	arrowImage := images.GetImages().Arrow
+	arrow := &Arrow{
+		Id:      uuid.New().String(),
 		m:       m,
 		b:       float64(startY) - float64(m * float64(startX)),
-		radians: radians,
-		X:       startX,
-		Y:       startY,
 		EndX:    endX,
 		EndY:    endY,
 		xInc:    xIncrement,
 		yInc:    yIncrement,
-		image:   image,
+		Sprite:  *NewSprite(arrowImage.Bounds().Dx(), arrowImage),
 	}
+	arrow.Sprite.X = startX
+	arrow.Sprite.Y = startY
+	arrow.Sprite.Radians = math.Atan2(float64(deltaY), float64(deltaX)) - (45 * math.Pi/180)
+	return arrow
 }

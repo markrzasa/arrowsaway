@@ -2,13 +2,11 @@ package main
 
 import (
 	"fmt"
-	"image"
 	"image/color"
 	"log"
 	"math"
 	"time"
 
-	"github.com/google/uuid"
 	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/hajimehoshi/ebiten/v2/inpututil"
 	"github.com/hajimehoshi/ebiten/v2/text"
@@ -31,7 +29,6 @@ const (
 	NoClicker gameState = iota
 	Running
 	NextStage
-	//NextLevel
 	LostLife
 	GameOver
 	Winner
@@ -93,28 +90,24 @@ func (g *ArrowsAway) hitEnemy(a *sprites.Arrow) bool {
 	hitWhileAlive := false
 	hit := false
 	for _, e := range g.enemies {
-		hitWhileAlive, hit = e.IsHit(a, g.hero.X, g.hero.Y)
+		hitWhileAlive, hit = e.IsHit(a, g.hero.Sprite)
 		if hitWhileAlive {
 			g.score = g.score + 10
 		}	
 	}
-
 	return hit
 }
 
 func (g *ArrowsAway) updateHero() {
-	noIntersect := image.Rectangle{}
 	for _, e := range g.enemies {
-		if e.IsAlive() {
-			if e.Bounds().Intersect(*g.hero.Bounds()) != noIntersect {
-				g.lives = g.lives - 1
-				if g.lives == 0 {
-					g.state = GameOver
-				} else {
-					g.state = LostLife
-				}
-				break
+		if e.IsAlive() && e.Sprite.Intersect(g.hero.Sprite) {
+			g.lives = g.lives - 1
+			if g.lives == 0 {
+				g.state = GameOver
+			} else {
+				g.state = LostLife
 			}
+			break
 		}
 	}
 }
@@ -125,10 +118,11 @@ func (g *ArrowsAway) updateArrows() {
 		y := ebiten.StandardGamepadAxisValue(id, ebiten.StandardGamepadAxisRightStickVertical)
 		if math.Abs(x) > 0.5 || math.Abs(y) > 0.5 {
 			if g.lastShotMilli == 0 || (time.Now().UnixMilli() >= (g.lastShotMilli + milliBetweenShots)) {
-				endX := g.hero.X + int(float64(g.width / 2) * x)
-				endY := g.hero.Y + int(float64(g.height / 2) * y)
-				id := uuid.New().String()
-				g.arrows[id] = sprites.NewArrow(g.hero.X, g.hero.Y, endX, endY, images.GetImages().Arrow)
+				heroBounds := g.hero.Sprite.Bounds()
+				endX := heroBounds.Min.X + int(float64(g.width / 2) * x)
+				endY := heroBounds.Min.Y + int(float64(g.height / 2) * y)
+				arrow := sprites.NewArrow(g.hero.Sprite.X, g.hero.Sprite.Y, endX, endY)
+				g.arrows[arrow.Id] = arrow
 			}
 		} else {
 			g.lastShotMilli = 0
@@ -156,7 +150,26 @@ func (g *ArrowsAway) updateEnemies() {
 	}
 
 	for _, e := range g.enemies {
-		e.Update(g.width, g.height, g.hero.X, g.hero.Y)
+		e.Update(g.width, g.height, g.hero.Sprite)
+	}
+}
+
+func (g *ArrowsAway) updateLevel() {
+	if len(g.enemies) == 0 {
+		level := g.levels[g.levelIndex]
+		if level.Complete() {
+			g.levelIndex = g.levelIndex + 1
+			if g.levelIndex == len(g.levels) {
+				g.state = Winner
+			} else {
+				g.levels[g.levelIndex].PopulateEnemies(g.width, g.height, g.enemies)
+				g.state = NextStage
+			}
+		} else {
+			level.NextStage()
+			level.PopulateEnemies(g.width, g.height, g.enemies)
+			g.state = NextStage
+		}
 	}
 }
 
@@ -174,7 +187,7 @@ func (g *ArrowsAway) Update() error {
 		}
 	case NextStage:
 		if g.isPadButtonPressed() {
-			g.hero.Center(g.width, g.height)
+			g.hero.Sprite.Center(g.width, g.height)
 			g.state = Running
 		}
 	case Running:
@@ -182,25 +195,10 @@ func (g *ArrowsAway) Update() error {
 		g.updateHero()
 		g.updateArrows()
 		g.updateEnemies()
-		if len(g.enemies) == 0 {
-			level := g.levels[g.levelIndex]
-			if level.Complete() {
-				g.levelIndex = g.levelIndex + 1
-				if g.levelIndex == len(g.levels) {
-					g.state = Winner
-				} else {
-					g.levels[g.levelIndex].PopulateEnemies(g.width, g.height, g.enemies)
-					g.state = NextStage
-				}
-			} else {
-				level.NextStage()
-				level.PopulateEnemies(g.width, g.height, g.enemies)
-				g.state = NextStage
-			}
-		}
+		g.updateLevel()
 	case LostLife:
 		if g.isPadButtonPressed() {
-			g.hero.Center(g.width, g.height)
+			g.hero.Sprite.Center(g.width, g.height)
 			for id, e := range g.enemies {
 				if !e.IsAlive() {
 					delete(g.enemies, id)
@@ -214,7 +212,7 @@ func (g *ArrowsAway) Update() error {
 	case Winner:
 		if g.isPadButtonPressed() {
 			g.enemies = make(map[string]*sprites.Enemy)
-			g.hero.Center(g.width, g.height)
+			g.hero.Sprite.Center(g.width, g.height)
 			g.score = 0
 			g.lives = 3
 			g.state = NextStage
@@ -333,8 +331,8 @@ func (g *ArrowsAway) initialize() {
 	g.levels = append(g.levels, level.NewLevel("Skeletons on the stone", images.GetImages().Skeleton, images.GetImages().Stone, 40))
 	g.lives = 3
 	g.score = 0
-	g.state = NextStage
-	g.hero = sprites.NewHero(g.width, g.height, images.GetImages().Hero)
+	g.hero = sprites.NewHero(images.GetImages().Hero)
+	g.hero.Sprite.Center(g.width, g.height)
 	g.arrows = make(map[string]*sprites.Arrow)
 	g.enemies = make(map[string]*sprites.Enemy)
 	g.levels[g.levelIndex].PopulateEnemies(g.width, g.height, g.enemies)

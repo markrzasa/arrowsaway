@@ -2,9 +2,9 @@ THIS_DIR := $(dir $(abspath $(lastword $(MAKEFILE_LIST))))
 
 deps:
 	go get -u
-	go mod tidy -compat=1.17
+	go mod tidy
 
-build: deps
+build:
 	go build -o out/ $(THIS_DIR)
 
 run:
